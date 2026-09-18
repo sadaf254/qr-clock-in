@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Clock-In Scanner</title>
+    <!-- Include HTML5-QRCode scanning library hosted on global CDN -->
+    <script src="https://cloudflare.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f7f6; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; box-sizing: border-box; }
+        h2 { margin-top: 0; text-align: center; color: #333; }
+        label { font-weight: bold; margin-bottom: 6px; display: block; color: #555; }
+        input, select { width: 100%; padding: 12px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
+        #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 16px; }
+        .btn-group { display: flex; gap: 10px; }
+        button { flex: 1; padding: 14px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .btn-in { background: #28a745; color: white; }
+        .btn-out { background: #dc3545; color: white; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #status { text-align: center; margin-top: 12px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>⏱️ Workspace Punch Clock</h2>
+    
+    <label for="employeeId">Employee ID</label>
+    <input type="text" id="employeeId" placeholder="Enter your ID (e.g. EMP101)" required>
+
+    <label>Scan Location QR Code</label>
+    <div id="reader"></div>
+    <input type="text" id="locationId" placeholder="Scanned Location ID appears here..." readonly style="background: #e9ecef;">
+
+    <div class="btn-group">
+        <button id="btnIn" class="btn-in" onclick="submitLog('CLOCK_IN')" disabled>Clock In</button>
+        <button id="btnOut" class="btn-out" onclick="submitLog('CLOCK_OUT')" disabled>Clock Out</button>
+    </div>
+
+    <div id="status"></div>
+</div>
+
+<script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx4WCdUGLdc0ZuCuf2QKEIZabsVrcAh3jxXtRQMnCRnxtiS4fTHS6y9hkMWiAmJLV_zKw/exec"; // <-- PASTE YOUR APPS SCRIPT URL HERE
+    let userGPS = "Unknown";
+
+    // 1. Request GPS Coordinates immediately on load
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => { userGPS = `${position.coords.latitude}, ${position.coords.longitude}`; },
+            (error) => { alert("⚠️ Location access is required to clock in. Please enable GPS."); }
+        );
+    }
+
+    // 2. Initialize the QR Code Camera Scanner
+    function onScanSuccess(decodedText, decodedResult) {
+        document.getElementById('locationId').value = decodedText;
+        document.getElementById('btnIn').disabled = false;
+        document.getElementById('btnOut').disabled = false;
+        document.getElementById('status').innerText = "✅ Location Scanned Successfully";
+        document.getElementById('status').style.color = "#28a745";
+    }
+
+    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+    html5QrcodeScanner.render(onScanSuccess);
+
+    // 3. Send payload payload to Google Sheets via Fetch API
+    function submitLog(actionType) {
+        const empId = document.getElementById('employeeId').value.trim();
+        const locId = document.getElementById('locationId').value;
+        const statusDiv = document.getElementById('status');
+
+        if (!empId) {
+            alert("Please type your Employee ID before logging hours.");
+            return;
+        }
+
+        statusDiv.innerText = "⏳ Submitting entry...";
+        statusDiv.style.color = "#666";
+
+        const payload = {
+            employeeId: empId,
+            action: actionType,
+            locationId: locId,
+            gps: userGPS
+        };
+
+        fetch(WEB_APP_URL, {
+            method: "POST",
+            mode: "no-cors", // Required to prevent CORS policy blocks with Apps Script
+            cache: "no-cache",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        })
+        .then(() => {
+            statusDiv.innerText = `🎉 Successfully ${actionType === 'CLOCK_IN' ? 'Clocked In' : 'Clocked Out'}!`;
+            statusDiv.style.color = "#28a745";
+            // Reset form fields
+            document.getElementById('employeeId').value = "";
+            document.getElementById('locationId').value = "";
+            document.getElementById('btnIn').disabled = true;
+            document.getElementById('btnOut').disabled = true;
+        })
+        .catch(err => {
+            statusDiv.innerText = "❌ Submission failed. Check connection.";
+            statusDiv.style.color = "#dc3545";
+            console.error(err);
+        });
+    }
+</script>
+
+</body>
+</html>

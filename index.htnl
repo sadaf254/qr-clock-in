@@ -42,7 +42,7 @@
 </div>
 
 <script>
-    const WEB_APP_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL"; // <-- PASTE YOUR APPS SCRIPT URL HERE
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx4WCdUGLdc0ZuCuf2QKEIZabsVrcAh3jxXtRQMnCRnxtiS4fTHS6y9hkMWiAmJLV_zKw/exec"; // <-- PASTE YOUR APPS SCRIPT URL HERE
     let userGPS = "Unknown";
 
     // 1. Request GPS Coordinates immediately on load
